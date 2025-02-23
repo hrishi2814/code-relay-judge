@@ -1,0 +1,26 @@
+{
+  "name": "code-relay-judge",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hrishi2814/code-relay-judge.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/hrishi2814/code-relay-judge/issues"
+  },
+  "homepage": "https://github.com/hrishi2814/code-relay-judge#readme",
+  "dependencies": {
+    "express": "^4.21.2",
+    "fs-extra": "^11.3.0",
+    "multer": "^1.4.5-lts.1"
+  }
+}
