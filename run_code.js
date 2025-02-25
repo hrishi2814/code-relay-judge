@@ -44,7 +44,12 @@ module.exports = async function runCodeInDocker(team, problem, language, filePat
                 input: await fs.readFile(inputPath, 'utf-8'),
                 expectedOutput,
                 actualOutput,
-                error: stderr
+                error: stderr,
+                diff: passed ? null : {
+                    expected: expectedOutput,
+                    actual: actualOutput,
+                    mismatch: highlightDifference(expectedOutput, actualOutput)
+                }
             });
         }
         
@@ -89,4 +94,19 @@ function getDockerCommand(language, filePath, inputPath, containerName) {
         default:
             throw new Error(`Unsupported language: ${language}`);
     }
+}
+
+function highlightDifference(expected, actual) {
+    if (expected.length !== actual.length) {
+        return `Length mismatch: expected ${expected.length} characters, got ${actual.length}`;
+    }
+    
+    const diffPositions = [];
+    for (let i = 0; i < expected.length; i++) {
+        if (expected[i] !== actual[i]) {
+            diffPositions.push(i);
+        }
+    }
+    
+    return `Differences at positions: ${diffPositions.join(', ')}`;
 }

@@ -1,16 +1,17 @@
 [
   {
-    "team": "yugaa",
+    "team": "cc",
     "score": 200,
-    "lastUpdated": 1740504805419
-  },
-  {
-    "team": "bokaa",
-    "lastUpdated": 1740504790260
+    "lastUpdated": 1740508749129
   },
   {
     "team": "WW",
-    "score": 300,
-    "lastUpdated": 1740504839001
+    "score": 100,
+    "lastUpdated": 1740508676153
+  },
+  {
+    "team": "LL",
+    "lastUpdated": 1740507075932,
+    "score": 0
   }
 ]

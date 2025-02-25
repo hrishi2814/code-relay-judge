@@ -81,9 +81,16 @@ class SubmissionQueue {
       leaderboard = await fs.readJson(leaderboardPath);
     }
     
+    // Skip updating if score is undefined or null
+    if (score === undefined || score === null) {
+      console.log(`Skipping leaderboard update for team ${team} due to invalid score`);
+      return leaderboard;
+    }
+    
     const teamEntry = leaderboard.find(entry => entry.team === team);
     if (teamEntry) {
-      teamEntry.score += score;
+      // Make sure we have a valid score to add to
+      teamEntry.score = (teamEntry.score || 0) + score;
       teamEntry.lastUpdated = Date.now();
     } else {
       leaderboard.push({
@@ -94,7 +101,7 @@ class SubmissionQueue {
     }
     
     // Sort by score (descending)
-    leaderboard.sort((a, b) => b.score - a.score);
+    leaderboard.sort((a, b) => (b.score || 0) - (a.score || 0));
     
     await fs.writeJson(leaderboardPath, leaderboard, { spaces: 2 });
     return leaderboard;

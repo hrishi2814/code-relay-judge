@@ -40,12 +40,18 @@ async function saveResult(team, problem, result) {
 async function updateLeaderboard(team, score) {
     let leaderboard = await fs.readJson(LEADERBOARD_FILE);
     
+    // Skip updating if score is undefined or null
+    if (score === undefined || score === null) {
+        console.log(`Skipping leaderboard update for team ${team} due to invalid score`);
+        return;
+    }
+    
     // Find team in leaderboard
     const teamIndex = leaderboard.findIndex(entry => entry.team === team);
     
     if (teamIndex >= 0) {
-        // Update existing team
-        leaderboard[teamIndex].score += score;
+        // Update existing team - ensure we have a valid score to add to
+        leaderboard[teamIndex].score = (leaderboard[teamIndex].score || 0) + score;
         leaderboard[teamIndex].lastUpdated = Date.now();
     } else {
         // Add new team
@@ -56,8 +62,8 @@ async function updateLeaderboard(team, score) {
         });
     }
     
-    // Sort by score (descending)
-    leaderboard.sort((a, b) => b.score - a.score);
+    // Sort by score (descending) - handle null scores
+    leaderboard.sort((a, b) => (b.score || 0) - (a.score || 0));
     
     await fs.writeJson(LEADERBOARD_FILE, leaderboard, { spaces: 2 });
 }
