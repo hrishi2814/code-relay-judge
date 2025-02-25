@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Code Relay Admin</title>
+  <style>
+    body { font-family: Arial; margin: 20px; }
+    .team-status { border: 1px solid #ddd; padding: 10px; margin: 10px 0; }
+    .team-name { font-weight: bold; }
+    .submissions { margin-left: 20px; }
+  </style>
+</head>
+<body>
+  <h1>Code Relay Admin Dashboard</h1>
+  <div id="teams-container"></div>
+  
+  <script>
+    async function updateStatus() {
+      const response = await fetch('/admin-status');
+      const data = await response.json();
+      
+      const container = document.getElementById('teams-container');
+      container.innerHTML = '';
+      
+      data.teams.forEach(team => {
+        const teamDiv = document.createElement('div');
+        teamDiv.className = 'team-status';
+        teamDiv.innerHTML = `
+          <div class="team-name">${team.name} - Score: ${team.score}</div>
+          <div class="submissions">
+            <p>Problem 1: ${team.problems.problem1 || 'Not attempted'}</p>
+            <p>Problem 2: ${team.problems.problem2 || 'Not attempted'}</p>
+            <p>Problem 3: ${team.problems.problem3 || 'Not attempted'}</p>
+          </div>
+        `;
+        container.appendChild(teamDiv);
+      });
+    }
+    
+    // Update every 5 seconds
+    setInterval(updateStatus, 5000);
+    updateStatus();
+  </script>
+</body>
+</html>

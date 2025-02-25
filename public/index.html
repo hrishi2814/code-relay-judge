@@ -48,7 +48,8 @@
     </style>
 </head>
 <body>
-    <h1>Code Relay Competition</h1>
+    <h1>Lightning Relay</h1>
+    <div style="text-align: right;"><a href="/problems.html">View Problems</a></div>
     
     <div class="container">
         <div class="submission-form">
@@ -77,8 +78,18 @@
                     </select>
                 </div>
                 <div>
+                    <button type="button" id="loadTemplate">Load Template</button>
+                    <span id="templateStatus"></span>
+                </div>
+                <div>
                     <label for="code">Your Code:</label>
                     <textarea id="code" name="code" required></textarea>
+                </div>
+                <div class="examples">
+                    <h3>Example Input/Output</h3>
+                    <div id="exampleIO">
+                        <!-- Will be populated based on selected problem -->
+                    </div>
                 </div>
                 <button type="submit">Submit</button>
             </form>
@@ -104,6 +115,37 @@
     </div>
 
     <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+                const response = await fetch('/default-team');
+                const data = await response.json();
+                
+                if (data.team) {
+                    const teamInput = document.getElementById('team');
+                    teamInput.value = data.team;
+                    teamInput.readOnly = true; // Make it read-only
+                    
+                    // Add a visual indicator
+                    teamInput.style.backgroundColor = '#f0f0f0';
+                    
+                    // Add a team banner at the top
+                    const banner = document.createElement('div');
+                    banner.style.backgroundColor = '#4CAF50';
+                    banner.style.color = 'white';
+                    banner.style.padding = '10px';
+                    banner.style.marginBottom = '20px';
+                    banner.style.borderRadius = '5px';
+                    banner.style.textAlign = 'center';
+                    banner.style.fontWeight = 'bold';
+                    banner.innerHTML = `Assigned to: ${data.team}`;
+                    
+                    document.body.insertBefore(banner, document.body.firstChild);
+                }
+            } catch (error) {
+                console.error('Error loading team configuration:', error);
+            }
+        });
+        
         // Submit form
         document.getElementById('codeForm').addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -205,6 +247,69 @@
         
         // Refresh leaderboard every 10 seconds
         setInterval(updateLeaderboard, 10000);
+        
+        // Add this to your existing JavaScript
+        document.getElementById('problem').addEventListener('change', updateExamples);
+        
+        function updateExamples() {
+            const problem = document.getElementById('problem').value;
+            const exampleDiv = document.getElementById('exampleIO');
+            
+            const examples = {
+                problem1: `<pre>Input:
+John
+
+Output:
+Hello, John!</pre>`,
+                problem2: `<pre>Input:
+5
+10
+15
+20
+
+Output:
+50</pre>`,
+                problem3: `<pre>Input:
+racecar
+
+Output:
+Yes
+
+Input:
+hello
+
+Output:
+No</pre>`
+            };
+            
+            exampleDiv.innerHTML = examples[problem] || '';
+        }
+        
+        // Initialize examples for the default problem
+        updateExamples();
+        
+        // Add this to your existing JavaScript
+        document.getElementById('loadTemplate').addEventListener('click', async () => {
+            const language = document.getElementById('language').value;
+            const problem = document.getElementById('problem').value;
+            const templateStatus = document.getElementById('templateStatus');
+            
+            templateStatus.textContent = 'Loading template...';
+            
+            try {
+                const response = await fetch(`/template/${language}/${problem}`);
+                if (response.ok) {
+                    const template = await response.text();
+                    document.getElementById('code').value = template;
+                    templateStatus.textContent = 'Template loaded!';
+                    setTimeout(() => { templateStatus.textContent = ''; }, 3000);
+                } else {
+                    templateStatus.textContent = 'Template not available for this language/problem';
+                }
+            } catch (error) {
+                templateStatus.textContent = 'Error loading template';
+            }
+        });
     </script>
 </body>
-</html> 
+</html>

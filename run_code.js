@@ -45,6 +45,7 @@ module.exports = async function runCodeInDocker(team, problem, language, filePat
                 expectedOutput,
                 actualOutput,
                 error: stderr,
+                friendlyError: parseErrorMessage(stderr, language),
                 diff: passed ? null : {
                     expected: expectedOutput,
                     actual: actualOutput,
@@ -109,4 +110,36 @@ function highlightDifference(expected, actual) {
     }
     
     return `Differences at positions: ${diffPositions.join(', ')}`;
+}
+
+function parseErrorMessage(stderr, language) {
+    if (!stderr) return null;
+    
+    // Language-specific error parsing
+    switch (language.toLowerCase()) {
+        case 'java':
+            if (stderr.includes('cannot find symbol')) {
+                return 'You might be using a variable that hasn\'t been declared.';
+            } else if (stderr.includes('incompatible types')) {
+                return 'Type mismatch error. Check your variable types.';
+            } else if (stderr.includes('reached end of file while parsing')) {
+                return 'Missing closing bracket or semicolon.';
+            }
+            break;
+            
+        case 'py':
+        case 'python':
+            if (stderr.includes('SyntaxError')) {
+                return 'Python syntax error. Check for missing colons, indentation, or brackets.';
+            } else if (stderr.includes('NameError')) {
+                return 'You\'re using a variable that hasn\'t been defined.';
+            } else if (stderr.includes('ValueError')) {
+                return 'Error in value conversion. Make sure you\'re converting strings to numbers correctly.';
+            }
+            break;
+            
+        // Add more languages...
+    }
+    
+    return stderr; // Return original error if no specific message
 }
