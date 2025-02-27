@@ -45,6 +45,20 @@
             border-radius: 4px;
             display: none;
         }
+        .test-details {
+            margin-left: 20px;
+            padding: 10px;
+            background-color: #f8f8f8;
+            border-left: 3px solid #e74c3c;
+            margin-top: 5px;
+        }
+        
+        .compilation-error {
+            background-color: #ffebee;
+            border-left: 5px solid #f44336;
+            padding: 15px;
+            margin-top: 10px;
+        }
     </style>
 </head>
 <body>
@@ -200,16 +214,44 @@
                         if (job.result.results) {
                             resultHtml += '<h4>Test Cases:</h4><ul>';
                             job.result.results.forEach(test => {
-                                resultHtml += `<li>${test.testName}: ${test.passed ? '✅ Passed' : '❌ Failed'}</li>`;
+                                resultHtml += `<li>${test.testName}: ${test.passed ? '✅ Passed' : '❌ Failed'}`;
+                                
+                                // Add details for failed tests
+                                if (!test.passed) {
+                                    resultHtml += `<div class="test-details">`;
+                                    if (test.friendlyError) {
+                                        resultHtml += `<p><strong>Error:</strong> ${test.friendlyError}</p>`;
+                                    }
+                                    if (test.diff) {
+                                        resultHtml += `
+                                            <p><strong>Expected:</strong> "${test.diff.expected}"</p>
+                                            <p><strong>Your output:</strong> "${test.diff.actual}"</p>
+                                        `;
+                                    }
+                                    resultHtml += `</div>`;
+                                }
+                                
+                                resultHtml += `</li>`;
                             });
                             resultHtml += '</ul>';
                         }
                         
                         statusDiv.innerHTML = resultHtml;
                         updateLeaderboard();
-                    } else if (job.status === 'failed') {
+                    } else if (job.status === 'failed' || (job.result && job.result.compilationError)) {
                         clearInterval(interval);
-                        statusDiv.innerHTML = `Error: ${job.error || 'Unknown error'}`;
+                        
+                        let errorHtml = `<h3>Compilation Error</h3>`;
+                        
+                        if (job.result && job.result.friendlyError) {
+                            errorHtml += `<p>${job.result.friendlyError}</p>`;
+                        } else if (job.error) {
+                            errorHtml += `<p>${job.error}</p>`;
+                        } else {
+                            errorHtml += `<p>Your code failed to compile. Please check for syntax errors.</p>`;
+                        }
+                        
+                        statusDiv.innerHTML = errorHtml;
                     } else {
                         statusDiv.innerHTML = `Status: ${job.status}`;
                     }

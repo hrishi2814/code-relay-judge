@@ -292,4 +292,4 @@ app.get('/admin-status', async (req, res) => {
   }
 });
 
-app.listen(6969, () => console.log("Server running on 6969"));
+app.listen(6969,'0.0.0.0', () => console.log("Server running on 6969"));
