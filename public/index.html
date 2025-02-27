@@ -63,11 +63,19 @@
 </head>
 <body>
     <h1>Lightning Relay</h1>
-    <div style="text-align: right;"><a href="/problems.html">View Problems</a></div>
+    <div style="text-align: right;"><a href="/problems.html">View Problems</a> <a href="/teams.html" style="margin-left: 10px;">Team Management</a></div>
     
     <div class="container">
         <div class="submission-form">
             <h2>Submit Your Solution</h2>
+            <div class="timer-container" style="margin-bottom: 20px; text-align: center;">
+                <div class="phase-timer" style="font-size: 24px; font-weight: bold;">
+                    <span id="phaseType">Coding Phase</span>: <span id="timeLeft">5:00</span>
+                </div>
+                <div id="swapMessage" style="display: none; color: red; margin-top: 10px;">
+                    Time to swap! Next member's turn in <span id="swapTimer">30</span> seconds
+                </div>
+            </div>
             <form id="codeForm">
                 <div>
                     <label for="team">Team Name:</label>
@@ -109,6 +117,16 @@
             </form>
             
             <div id="status" class="status"></div>
+            <div id="submissionStatus" style="display: none; margin-top: 20px;">
+                <div class="progress-container" style="border: 1px solid #ccc; padding: 10px; border-radius: 5px;">
+                    <h3 style="margin: 0 0 10px 0;">Submission Status</h3>
+                    <div class="progress-bar" style="background: #f0f0f0; height: 20px; border-radius: 10px;">
+                        <div id="progressFill" style="width: 0%; height: 100%; background: #4CAF50; border-radius: 10px; transition: width 0.5s;"></div>
+                    </div>
+                    <div id="statusText" style="margin-top: 10px;">Initializing submission...</div>
+                    <div id="testResults" style="margin-top: 10px;"></div>
+                </div>
+            </div>
         </div>
         
         <div class="leaderboard">
@@ -160,105 +178,202 @@
             }
         });
         
-        // Submit form
-        document.getElementById('codeForm').addEventListener('submit', async (e) => {
+        const codeForm = document.getElementById('codeForm');
+        let submissionInProgress = false;
+        let codingTimeLeft = 300; // 5 minutes in seconds
+        let swapTimeLeft = 30; // 30 seconds for swapping
+        let isSwapPhase = false;
+
+        async function updateTimer() {
+            if (isSwapPhase) {
+                swapTimeLeft--;
+                document.getElementById('swapTimer').textContent = swapTimeLeft;
+                
+                if (swapTimeLeft <= 0) {
+                    isSwapPhase = false;
+                    swapTimeLeft = 30;
+                    codingTimeLeft = 300;
+                    document.getElementById('swapMessage').style.display = 'none';
+                    enableForm(true);
+                    
+                    // Update team member
+                    await fetch('/team/timer', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            teamName: document.getElementById('team').value,
+                            phase: 'coding'
+                        })
+                    });
+                }
+            } else {
+                codingTimeLeft--;
+                const minutes = Math.floor(codingTimeLeft / 60);
+                const seconds = codingTimeLeft % 60;
+                document.getElementById('timeLeft').textContent = 
+                    `${minutes}:${seconds.toString().padStart(2, '0')}`;
+                
+                if (codingTimeLeft <= 0) {
+                    isSwapPhase = true;
+                    document.getElementById('swapMessage').style.display = 'block';
+                    enableForm(false);
+                }
+            }
+        }
+
+        function enableForm(enabled) {
+            const form = document.getElementById('codeForm');
+            Array.from(form.elements).forEach(el => el.disabled = !enabled);
+        }
+
+        // Start the timer
+        setInterval(updateTimer, 1000);
+
+        codeForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             
-            const team = document.getElementById('team').value;
-            const problem = document.getElementById('problem').value;
-            const language = document.getElementById('language').value;
-            const code = document.getElementById('code').value;
-            
-            const statusDiv = document.getElementById('status');
-            statusDiv.style.display = 'block';
-            statusDiv.innerHTML = 'Submitting...';
-            
+            if (submissionInProgress) {
+                alert('Please wait for your current submission to be evaluated.');
+                return;
+            }
+
+            if (isSwapPhase) {
+                alert('Cannot submit during swap phase');
+                return;
+            }
+
+            const formData = {
+                team: document.getElementById('team').value,
+                problem: document.getElementById('problem').value,
+                language: document.getElementById('language').value,
+                code: document.getElementById('code').value
+            };
+
             try {
+                submissionInProgress = true;
+                Array.from(codeForm.elements).forEach(el => el.disabled = true);
+                
                 const response = await fetch('/submit/text', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify({ team, problem, language, code })
+                    body: JSON.stringify(formData)
                 });
-                
+
                 const result = await response.json();
                 
-                if (result.jobId) {
-                    statusDiv.innerHTML = `Submission received! Job ID: ${result.jobId}`;
-                    pollJobStatus(result.jobId);
+                if (result.status === 'submitted') {
+                    // Start polling for results
+                    const jobId = result.jobId;
+                    pollJobStatus(jobId);
                 } else {
-                    statusDiv.innerHTML = `Error: ${result.error || 'Unknown error'}`;
+                    alert(`Submission failed: ${result.error}`);
                 }
             } catch (error) {
-                statusDiv.innerHTML = `Error: ${error.message}`;
+                alert('Error submitting code');
             }
         });
         
-        // Poll job status
         async function pollJobStatus(jobId) {
-            const statusDiv = document.getElementById('status');
+            const maxAttempts = 60; // 30 seconds total (500ms * 60)
+            const maxRetries = 3;
+            let attempts = 0;
+            let retries = 0;
+
+            const statusDiv = document.getElementById('submissionStatus');
+            const progressFill = document.getElementById('progressFill');
+            const statusText = document.getElementById('statusText');
+            const testResults = document.getElementById('testResults');
             
-            const interval = setInterval(async () => {
+            statusDiv.style.display = 'block';
+            
+            const pollInterval = setInterval(async () => {
                 try {
                     const response = await fetch(`/status/${jobId}`);
-                    const job = await response.json();
-                    
-                    if (job.status === 'completed') {
-                        clearInterval(interval);
-                        
-                        let resultHtml = `<h3>Results</h3>
-                            <p>Score: ${job.result.score}%</p>
-                            <p>Passed: ${job.result.passedTests}/${job.result.totalTests} tests</p>`;
-                        
-                        if (job.result.results) {
-                            resultHtml += '<h4>Test Cases:</h4><ul>';
-                            job.result.results.forEach(test => {
-                                resultHtml += `<li>${test.testName}: ${test.passed ? '✅ Passed' : '❌ Failed'}`;
-                                
-                                // Add details for failed tests
-                                if (!test.passed) {
-                                    resultHtml += `<div class="test-details">`;
-                                    if (test.friendlyError) {
-                                        resultHtml += `<p><strong>Error:</strong> ${test.friendlyError}</p>`;
-                                    }
-                                    if (test.diff) {
-                                        resultHtml += `
-                                            <p><strong>Expected:</strong> "${test.diff.expected}"</p>
-                                            <p><strong>Your output:</strong> "${test.diff.actual}"</p>
-                                        `;
-                                    }
-                                    resultHtml += `</div>`;
-                                }
-                                
-                                resultHtml += `</li>`;
-                            });
-                            resultHtml += '</ul>';
-                        }
-                        
-                        statusDiv.innerHTML = resultHtml;
-                        updateLeaderboard();
-                    } else if (job.status === 'failed' || (job.result && job.result.compilationError)) {
-                        clearInterval(interval);
-                        
-                        let errorHtml = `<h3>Compilation Error</h3>`;
-                        
-                        if (job.result && job.result.friendlyError) {
-                            errorHtml += `<p>${job.result.friendlyError}</p>`;
-                        } else if (job.error) {
-                            errorHtml += `<p>${job.error}</p>`;
+                    const status = await response.json();
+
+                    // Update progress bar
+                    const progress = (attempts / maxAttempts) * 100;
+                    progressFill.style.width = `${Math.min(progress, 95)}%`;
+
+                    if (status.status === 'completed' || status.completed) {
+                        clearInterval(pollInterval);
+                        submissionInProgress = false;
+                        Array.from(codeForm.elements).forEach(el => el.disabled = false);
+                        progressFill.style.width = '100%';
+
+                        if (status.result) {
+                            const passRate = (status.result.passedTests / status.result.totalTests) * 100;
+                            statusText.innerHTML = `<strong>Submission completed!</strong>`;
+                            testResults.innerHTML = `
+                                <div style="margin-top: 10px;">
+                                    <div>Passed: ${status.result.passedTests}/${status.result.totalTests} tests (${passRate}%)</div>
+                                    ${status.result.results ? `
+                                        <div style="margin-top: 10px;">
+                                            <strong>Test Case Details:</strong>
+                                            <div class="test-cases">
+                                                ${status.result.results.map((test, i) => `
+                                                    <div class="test-case" style="margin-top: 10px; border: 1px solid #ddd; border-radius: 4px;">
+                                                        <div class="test-header" style="padding: 10px; background: ${test.passed ? '#e8f5e9' : '#ffebee'}; cursor: pointer; display: flex; justify-content: space-between;" 
+                                                             onclick="toggleTestDetails(${i})">
+                                                            <span>Test ${i + 1}: ${test.passed ? '✅ Passed' : '❌ Failed'}</span>
+                                                            <span>▼</span>
+                                                        </div>
+                                                        <div id="test-details-${i}" class="test-body" style="display: none; padding: 10px;">
+                                                            <div style="margin-bottom: 10px;">
+                                                                <strong>Input:</strong>
+                                                                <pre style="background: #f8f8f8; padding: 8px; overflow-x: auto;">${test.input || 'N/A'}</pre>
+                                                            </div>
+                                                            <div style="margin-bottom: 10px;">
+                                                                <strong>Expected Output:</strong>
+                                                                <pre style="background: #f8f8f8; padding: 8px; overflow-x: auto;">${test.expectedOutput || 'N/A'}</pre>
+                                                            </div>
+                                                            <div>
+                                                                <strong>Your Output:</strong>
+                                                                <pre style="background: #f8f8f8; padding: 8px; overflow-x: auto;">${test.actualOutput || 'N/A'}</pre>
+                                                            </div>
+                                                            ${test.diff ? `
+                                                                <div style="margin-top: 10px; color: #d32f2f;">
+                                                                    <strong>Difference Highlighted:</strong>
+                                                                    <pre style="background: #fff8f8; padding: 8px; overflow-x: auto;">${test.diff.mismatch || ''}</pre>
+                                                                </div>
+                                                            ` : ''}
+                                                            ${test.error ? `
+                                                                <div style="margin-top: 10px; color: #d32f2f;">
+                                                                    <strong>Error:</strong>
+                                                                    <pre style="background: #fff8f8; padding: 8px; overflow-x: auto;">${test.friendlyError || test.error}</pre>
+                                                                </div>
+                                                            ` : ''}
+                                                        </div>
+                                                    </div>
+                                                `).join('')}
+                                            </div>
+                                        </div>
+                                    ` : ''}
+                                </div>
+                            `;
+                            // Stop polling after successful completion
+                            return;
                         } else {
-                            errorHtml += `<p>Your code failed to compile. Please check for syntax errors.</p>`;
+                            statusText.innerHTML = `<strong style="color: red;">Submission failed: ${status.error || 'Unknown error'}</strong>`;
+                            // Stop polling after failure
+                            return;
                         }
-                        
-                        statusDiv.innerHTML = errorHtml;
+                    } else if (++attempts >= maxAttempts) {
+                        clearInterval(pollInterval);
+                        submissionInProgress = false;
+                        Array.from(codeForm.elements).forEach(el => el.disabled = false);
+                        statusText.innerHTML = `<strong style="color: red;">Submission timed out after ${maxRetries + 1} attempts.</strong>`;
+                        return;
                     } else {
-                        statusDiv.innerHTML = `Status: ${job.status}`;
+                        statusText.textContent = `Processing submission... (${Math.round((maxAttempts - attempts) / 2)}s remaining)`;
                     }
                 } catch (error) {
-                    statusDiv.innerHTML = `Error checking status: ${error.message}`;
+                    console.error('Error polling status:', error);
+                    statusText.textContent = `Error checking status (Attempt ${attempts + 1}/${maxAttempts})`;
                 }
-            }, 2000);
+            }, 500);
         }
         
         // Update leaderboard
@@ -298,30 +413,27 @@
             const exampleDiv = document.getElementById('exampleIO');
             
             const examples = {
-                problem1: `<pre>Input:
-John
-
-Output:
-Hello, John!</pre>`,
-                problem2: `<pre>Input:
+                problem1: `<pre style="background: #f5f5f5; padding: 15px; border-radius: 4px;">
+Input:
 5
-10
-15
-20
+4 5 9 10 2
+1 3
 
 Output:
-50</pre>`,
-                problem3: `<pre>Input:
+24</pre>`,
+                problem2: `<pre style="background: #f5f5f5; padding: 15px; border-radius: 4px;">
+Input:
+6
+10 20 4 45 99 99
+
+Output:
+45</pre>`,
+                problem3: `<pre style="background: #f5f5f5; padding: 15px; border-radius: 4px;">
+Input:
 racecar
 
 Output:
-Yes
-
-Input:
-hello
-
-Output:
-No</pre>`
+Yes</pre>`
             };
             
             exampleDiv.innerHTML = examples[problem] || '';
@@ -352,6 +464,20 @@ No</pre>`
                 templateStatus.textContent = 'Error loading template';
             }
         });
+
+        function toggleTestDetails(index) {
+            const details = document.getElementById(`test-details-${index}`);
+            const header = details.previousElementSibling;
+            const arrow = header.querySelector('span:last-child');
+            
+            if (details.style.display === 'none') {
+                details.style.display = 'block';
+                arrow.textContent = '▲';
+            } else {
+                details.style.display = 'none';
+                arrow.textContent = '▼';
+            }
+        }
     </script>
 </body>
 </html>

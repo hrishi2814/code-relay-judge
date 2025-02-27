@@ -5,9 +5,10 @@ const runCodeInDocker = require('./run_code');
 // Simple in-memory queue
 class SubmissionQueue {
   constructor() {
+    this.SUBMISSION_TIMEOUT = 30000; // 30 seconds
     this.queue = [];
-    this.processing = false;
     this.results = {};
+    this.processing = false;
   }
 
   async add(submission) {
@@ -40,31 +41,31 @@ class SubmissionQueue {
     job.status = 'processing';
     
     try {
-      // Run the code
-      const result = await runCodeInDocker(
-        job.team, 
-        job.problem, 
-        job.language, 
-        job.filePath
-      );
+      // Create a timeout promise
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Submission timeout')), this.SUBMISSION_TIMEOUT);
+      });
+
+      // Race between code execution and timeout
+      const result = await Promise.race([
+        runCodeInDocker(job.team, job.problem, job.language, job.filePath),
+        timeoutPromise
+      ]);
       
-      // Store result
       job.status = 'completed';
       job.result = result;
       this.results[job.id] = job;
       
-      // Update leaderboard
-      await this.updateLeaderboard(job.team, result.score);
-      
-      console.log(`Completed job ${job.id} for team ${job.team}`);
+      if (result.score === 100) {
+        // Only update leaderboard for 100% solutions
+        await this.updateLeaderboard(job.team, job.problem, result.score);
+      }
     } catch (error) {
-      console.error(`Error processing job ${job.id}: ${error.message}`);
       job.status = 'failed';
       job.error = error.message;
       this.results[job.id] = job;
     }
     
-    // Process next job
     setImmediate(() => this.processQueue());
   }
 
@@ -72,36 +73,33 @@ class SubmissionQueue {
     return this.results[jobId] || null;
   }
 
-  async updateLeaderboard(team, score) {
+  async updateLeaderboard(team, problem, score) {
     const leaderboardPath = path.join(__dirname, 'db', 'leaderboard.json');
-    await fs.ensureDir(path.join(__dirname, 'db'));
+    await fs.ensureFile(leaderboardPath);
     
-    let leaderboard = [];
-    if (await fs.pathExists(leaderboardPath)) {
-      leaderboard = await fs.readJson(leaderboardPath);
+    let leaderboard = await fs.readJson(leaderboardPath, { throws: false }) || [];
+    let teamEntry = leaderboard.find(entry => entry.team === team);
+    
+    if (!teamEntry) {
+      teamEntry = { team, score: 0, solvedProblems: {} };
+      leaderboard.push(teamEntry);
     }
-    
-    // Skip updating if score is undefined or null
-    if (score === undefined || score === null) {
-      console.log(`Skipping leaderboard update for team ${team} due to invalid score`);
-      return leaderboard;
-    }
-    
-    const teamEntry = leaderboard.find(entry => entry.team === team);
-    if (teamEntry) {
-      // Make sure we have a valid score to add to
-      teamEntry.score = (teamEntry.score || 0) + score;
-      teamEntry.lastUpdated = Date.now();
-    } else {
-      leaderboard.push({
-        team,
-        score,
-        lastUpdated: Date.now()
-      });
+
+    // Check if this problem was already solved with 100% score
+    if (!teamEntry.solvedProblems[problem] || teamEntry.solvedProblems[problem] < 100) {
+      // If new score is better, update it
+      if (!teamEntry.solvedProblems[problem] || score > teamEntry.solvedProblems[problem]) {
+        // If there was a previous score, subtract it before adding new score
+        if (teamEntry.solvedProblems[problem]) {
+          teamEntry.score -= teamEntry.solvedProblems[problem];
+        }
+        teamEntry.score += score;
+        teamEntry.solvedProblems[problem] = score;
+      }
     }
     
     // Sort by score (descending)
-    leaderboard.sort((a, b) => (b.score || 0) - (a.score || 0));
+    leaderboard.sort((a, b) => b.score - a.score);
     
     await fs.writeJson(leaderboardPath, leaderboard, { spaces: 2 });
     return leaderboard;

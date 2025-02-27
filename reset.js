@@ -20,11 +20,22 @@ async function resetCompetition() {
     await fs.ensureDir(path.join(__dirname, 'db'));
     await fs.writeJson(leaderboardPath, [], { spaces: 2 });
     
+    // 4. Clear team configurations
+    console.log('Clearing team configurations...');
+    const configDir = path.join(__dirname, 'config');
+    await fs.emptyDir(configDir);
+    await fs.writeJson(path.join(configDir, 'teams.json'), {}, { spaces: 2 });
+    await fs.writeJson(path.join(configDir, 'active_team.json'), { activeTeam: null }, { spaces: 2 });
+    
     console.log('Competition data has been reset successfully!');
   } catch (error) {
     console.error('Error resetting competition data:', error);
   }
 }
 
-// Run the reset function
-resetCompetition();
+// Execute if run directly
+if (require.main === module) {
+  resetCompetition();
+}
+
+module.exports = resetCompetition;

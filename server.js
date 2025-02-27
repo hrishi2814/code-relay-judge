@@ -3,6 +3,7 @@ const multer = require('multer');
 const fs = require('fs-extra');
 const path = require('path');
 const submissionQueue = require('./queue');
+const teamConfig = require('./team_config');
 
 const app = express();
 app.use(express.json());
@@ -20,29 +21,55 @@ try {
   console.log('No team configuration found, using default form');
 }
 
+// Initialize team config on server start
+teamConfig.initializeTeamConfig().catch(console.error);
+
+// Add a Map to track submissions in progress
+const activeSubmissions = new Map();
+
 app.post("/submit/text", async(req, res) => {
     const {team, problem, language, code} = req.body;
+    
     if(!team){
         return res.status(400).json({error : "No team param"});
     }
 
-    const codeFilePath = path.join(__dirname, "submissions", `${team}_${problem}.${language}`);
-    await fs.ensureDir(path.join(__dirname, "submissions"));
-    await fs.writeFile(codeFilePath, code);
+    if (activeSubmissions.has(team)) {
+        return res.status(400).json({
+            status: "error",
+            error: "Team already has a submission in progress"
+        });
+    }
 
-    // Add to queue
-    const { jobId } = await submissionQueue.add({
-        team, 
-        problem, 
-        language, 
-        filePath: codeFilePath
-    });
-    
-    res.json({ 
-        status: "submitted", 
-        jobId,
-        message: "Your code has been submitted and is being processed" 
-    });
+    try {
+        activeSubmissions.set(team, true);
+        const codeFilePath = path.join(__dirname, "submissions", `${team}_${problem}.${language}`);
+        await fs.ensureDir(path.join(__dirname, "submissions"));
+        await fs.writeFile(codeFilePath, code);
+
+        // Add to queue
+        const { jobId } = await submissionQueue.add({
+            team, 
+            problem, 
+            language, 
+            filePath: codeFilePath
+        });
+        
+        res.json({ 
+            status: "submitted",
+            jobId,
+            message: "Your code has been submitted and is being processed"
+        });
+
+    } catch (error) {
+        console.error('Submission error:', error);
+        res.status(500).json({
+            status: "error",
+            error: error.message || "Internal server error"
+        });
+    } finally {
+        activeSubmissions.delete(team);
+    }
 });
 
 app.post("/submit/file", upload.single('code'), async(req, res) => {
@@ -263,8 +290,13 @@ public class Main {
 });
 
 // Add a new endpoint to get the default team
-app.get('/default-team', (req, res) => {
-  res.json({ team: defaultTeam });
+app.get('/default-team', async (req, res) => {
+  try {
+    const activeTeam = await teamConfig.getActiveTeam();
+    res.json({ team: activeTeam });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 });
 
 app.get('/admin-status', async (req, res) => {
@@ -289,6 +321,53 @@ app.get('/admin-status', async (req, res) => {
     res.json({ teams });
   } catch (error) {
     res.status(500).json({ error: error.message });
+  }
+});
+
+// Add team endpoint
+app.post('/team/add', async (req, res) => {
+  try {
+    const { teamName, members } = req.body;
+    const team = await teamConfig.addTeam(teamName, members);
+    res.json(team);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+// Update timer endpoint
+app.post('/team/timer', async (req, res) => {
+  try {
+    const { teamName, phase } = req.body;
+    const team = await teamConfig.updateTeamTimer(teamName, phase);
+    res.json(team);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+// Get team status endpoint
+app.get('/team/:teamName', async (req, res) => {
+  try {
+    const team = await teamConfig.getTeamStatus(req.params.teamName);
+    if (!team) {
+      res.status(404).json({ error: 'Team not found' });
+    } else {
+      res.json(team);
+    }
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+// Set active team
+app.post('/team/activate', express.json(), async (req, res) => {
+  try {
+    const { teamName } = req.body;
+    await teamConfig.setActiveTeam(teamName);
+    res.json({ message: 'Active team set successfully' });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
   }
 });
 

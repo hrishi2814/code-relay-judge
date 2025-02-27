@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Team Management - Lightning Relay</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .form-container {
+            border: 1px solid #ddd;
+            padding: 20px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .team-list {
+            margin-top: 20px;
+        }
+        .team-card {
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+        .timer {
+            font-size: 24px;
+            font-weight: bold;
+            color: #333;
+            margin: 10px 0;
+        }
+        .current-phase {
+            color: #0066cc;
+            font-weight: bold;
+        }
+        input, button {
+            margin: 5px 0;
+            padding: 5px;
+        }
+        button {
+            background-color: #0066cc;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+        button:hover {
+            background-color: #0052a3;
+        }
+    </style>
+</head>
+<body>
+    <h1>Team Management</h1>
+    <div class="form-container">
+        <h2>Register New Team</h2>
+        <form id="teamRegistration">
+            <div>
+                <label for="teamName">Team Name:</label>
+                <input type="text" id="teamName" required>
+            </div>
+            <div>
+                <label for="member1">Member 1:</label>
+                <input type="text" id="member1" required>
+            </div>
+            <div>
+                <label for="member2">Member 2:</label>
+                <input type="text" id="member2" required>
+            </div>
+            <div>
+                <label for="member3">Member 3:</label>
+                <input type="text" id="member3" required>
+            </div>
+            <div>
+                <label for="member4">Member 4:</label>
+                <input type="text" id="member4" required>
+            </div>
+            <button type="submit">Register Team</button>
+        </form>
+    </div>
+
+    <div class="team-list" id="teamList">
+        <!-- Teams will be displayed here -->
+    </div>
+
+    <script>
+        // Team registration
+        document.getElementById('teamRegistration').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const teamData = {
+                teamName: document.getElementById('teamName').value,
+                members: [
+                    document.getElementById('member1').value,
+                    document.getElementById('member2').value,
+                    document.getElementById('member3').value,
+                    document.getElementById('member4').value
+                ]
+            };
+
+            try {
+                // Register the team
+                const registerResponse = await fetch('/team/add', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(teamData)
+                });
+
+                if (registerResponse.ok) {
+                    // Set this team as active
+                    const activateResponse = await fetch('/team/activate', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ teamName: teamData.teamName })
+                    });
+
+                    if (activateResponse.ok) {
+                        alert('Team registered successfully! Redirecting to submission page...');
+                        window.location.href = '/'; // Redirect to submission page
+                    } else {
+                        const error = await activateResponse.json();
+                        alert(`Error activating team: ${error.message}`);
+                    }
+                } else {
+                    const error = await registerResponse.json();
+                    alert(`Error: ${error.message}`);
+                }
+            } catch (error) {
+                alert('Error registering team');
+            }
+        });
+
+        // Load and display teams
+        async function loadTeams() {
+            const teamList = document.getElementById('teamList');
+            try {
+                const response = await fetch('/teams');
+                const teams = await response.json();
+                
+                teamList.innerHTML = Object.entries(teams).map(([name, team]) => `
+                    <div class="team-card">
+                        <h3>${team.name}</h3>
+                        <p>Current Member: ${team.members[team.currentMember]}</p>
+                        <div class="timer">
+                            Time Left: <span id="timer-${team.name}">
+                                ${formatTime(team.discussionTimeLeft)}
+                            </span>
+                        </div>
+                        <p class="current-phase">
+                            Phase: ${team.discussionTimeLeft > 0 ? 'Discussion' : 'Coding'}
+                        </p>
+                        <button onclick="startPhase('${team.name}', 'discussion')">
+                            Start Discussion (10min)
+                        </button>
+                        <button onclick="startPhase('${team.name}', 'coding')">
+                            Start Coding (5min)
+                        </button>
+                    </div>
+                `).join('');
+            } catch (error) {
+                console.error('Error loading teams:', error);
+            }
+        }
+
+        function formatTime(seconds) {
+            const minutes = Math.floor(seconds / 60);
+            const remainingSeconds = seconds % 60;
+            return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+        }
+
+        async function startPhase(teamName, phase) {
+            try {
+                const response = await fetch('/team/timer', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ teamName, phase })
+                });
+
+                if (response.ok) {
+                    loadTeams();
+                } else {
+                    const error = await response.json();
+                    alert(`Error: ${error.message}`);
+                }
+            } catch (error) {
+                alert('Error starting phase');
+            }
+        }
+
+        // Initial load
+        loadTeams();
+        
+        // Update timers every second
+        setInterval(loadTeams, 1000);
+    </script>
+</body>
+</html> 

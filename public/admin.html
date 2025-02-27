@@ -3,14 +3,73 @@
 <head>
   <title>Code Relay Admin</title>
   <style>
-    body { font-family: Arial; margin: 20px; }
-    .team-status { border: 1px solid #ddd; padding: 10px; margin: 10px 0; }
-    .team-name { font-weight: bold; }
-    .submissions { margin-left: 20px; }
+    body { 
+      font-family: Arial; 
+      margin: 20px; 
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    .team-status { 
+      border: 1px solid #ddd; 
+      padding: 15px; 
+      margin: 15px 0; 
+      border-radius: 8px;
+      transition: all 0.3s ease;
+    }
+    .team-status:hover {
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    .team-name { 
+      font-size: 1.2em;
+      font-weight: bold; 
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .submissions { 
+      margin-top: 10px;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+    .problem-card {
+      padding: 10px;
+      border: 1px solid #eee;
+      border-radius: 4px;
+      background: #f9f9f9;
+    }
+    .controls {
+      margin: 20px 0;
+      padding: 15px;
+      background: #f5f5f5;
+      border-radius: 8px;
+    }
+    button {
+      padding: 8px 15px;
+      margin-right: 10px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      background: #4CAF50;
+      color: white;
+    }
+    button:hover {
+      opacity: 0.9;
+    }
+    button.danger {
+      background: #f44336;
+    }
   </style>
 </head>
 <body>
   <h1>Code Relay Admin Dashboard</h1>
+  
+  <div class="controls">
+    <button onclick="startCompetition()">Start Competition</button>
+    <button onclick="pauseCompetition()">Pause Competition</button>
+    <button class="danger" onclick="confirmReset()">Reset Competition</button>
+  </div>
+
   <div id="teams-container"></div>
   
   <script>
@@ -36,6 +95,37 @@
       });
     }
     
+    function confirmReset() {
+      if (confirm('Are you sure you want to reset the competition? This will clear all submissions and scores.')) {
+        resetCompetition();
+      }
+    }
+
+    async function resetCompetition() {
+      try {
+        const response = await fetch('/reset', { method: 'POST' });
+        if (response.ok) {
+          alert('Competition reset successfully');
+          updateStatus();
+        } else {
+          alert('Failed to reset competition');
+        }
+      } catch (error) {
+        console.error('Error resetting competition:', error);
+        alert('Error resetting competition');
+      }
+    }
+
+    async function startCompetition() {
+      // Add competition start logic
+      alert('Competition started');
+    }
+
+    async function pauseCompetition() {
+      // Add competition pause logic
+      alert('Competition paused');
+    }
+
     // Update every 5 seconds
     setInterval(updateStatus, 5000);
     updateStatus();
