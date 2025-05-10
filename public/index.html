@@ -4,145 +4,104 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Code Relay Competition</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-        .container {
-            display: flex;
-            gap: 20px;
-        }
-        .submission-form {
-            flex: 1;
-        }
-        .leaderboard {
-            flex: 1;
-        }
-        textarea {
-            width: 100%;
-            height: 300px;
-            font-family: monospace;
-        }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-        th, td {
-            border: 1px solid #ddd;
-            padding: 8px;
-            text-align: left;
-        }
-        th {
-            background-color: #f2f2f2;
-        }
-        .status {
-            margin-top: 20px;
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            display: none;
-        }
-        .test-details {
-            margin-left: 20px;
-            padding: 10px;
-            background-color: #f8f8f8;
-            border-left: 3px solid #e74c3c;
-            margin-top: 5px;
-        }
-        
-        .compilation-error {
-            background-color: #ffebee;
-            border-left: 5px solid #f44336;
-            padding: 15px;
-            margin-top: 10px;
-        }
-    </style>
+    <link rel="stylesheet" href="/css/output.css">
 </head>
-<body>
-    <h1>Lightning Relay</h1>
-    <div style="text-align: right;"><a href="/problems.html">View Problems</a> <a href="/teams.html" style="margin-left: 10px;">Team Management</a></div>
-    
-    <div class="container">
-        <div class="submission-form">
-            <h2>Submit Your Solution</h2>
-            <div class="timer-container" style="margin-bottom: 20px; text-align: center;">
-                <div class="phase-timer" style="font-size: 24px; font-weight: bold;">
-                    <span id="phaseType">Coding Phase</span>: <span id="timeLeft">5:00</span>
-                </div>
-                <div id="swapMessage" style="display: none; color: red; margin-top: 10px;">
-                    Time to swap! Next member's turn in <span id="swapTimer">30</span> seconds
-                </div>
+<body class="bg-gray-50 text-gray-800">
+    <div class="max-w-6xl mx-auto p-4">
+        <header class="mb-8">
+            <h1 class="text-3xl font-bold text-indigo-600">Lightning Relay</h1>
+            <div class="text-right mt-2">
+                <a href="/problems.html" target="_blank" class="text-blue-500 hover:text-blue-700">View Problems</a>
+                <a href="/teams.html" class="text-blue-500 hover:text-blue-700 ml-4">Team Management</a>
             </div>
-            <form id="codeForm">
-                <div>
-                    <label for="team">Team Name:</label>
-                    <input type="text" id="team" name="team" required>
-                </div>
-                <div>
-                    <label for="problem">Problem:</label>
-                    <select id="problem" name="problem" required>
-                        <option value="problem1">Problem 1</option>
-                        <option value="problem2">Problem 2</option>
-                        <option value="problem3">Problem 3</option>
-                    </select>
-                </div>
-                <div>
-                    <label for="language">Language:</label>
-                    <select id="language" name="language" required>
-                        <option value="py">Python</option>
-                        <option value="java">Java</option>
-                        <option value="cpp">C++</option>
-                        <option value="c">C</option>
-                        <option value="js">JavaScript</option>
-                    </select>
-                </div>
-                <div>
-                    <button type="button" id="loadTemplate">Load Template</button>
-                    <span id="templateStatus"></span>
-                </div>
-                <div>
-                    <label for="code">Your Code:</label>
-                    <textarea id="code" name="code" required></textarea>
-                </div>
-                <div class="examples">
-                    <h3>Example Input/Output</h3>
-                    <div id="exampleIO">
-                        <!-- Will be populated based on selected problem -->
-                    </div>
-                </div>
-                <button type="submit">Submit</button>
-            </form>
-            
-            <div id="status" class="status"></div>
-            <div id="submissionStatus" style="display: none; margin-top: 20px;">
-                <div class="progress-container" style="border: 1px solid #ccc; padding: 10px; border-radius: 5px;">
-                    <h3 style="margin: 0 0 10px 0;">Submission Status</h3>
-                    <div class="progress-bar" style="background: #f0f0f0; height: 20px; border-radius: 10px;">
-                        <div id="progressFill" style="width: 0%; height: 100%; background: #4CAF50; border-radius: 10px; transition: width 0.5s;"></div>
-                    </div>
-                    <div id="statusText" style="margin-top: 10px;">Initializing submission...</div>
-                    <div id="testResults" style="margin-top: 10px;"></div>
-                </div>
-            </div>
-        </div>
+        </header>
         
-        <div class="leaderboard">
-            <h2>Leaderboard</h2>
-            <table id="leaderboardTable">
-                <thead>
-                    <tr>
-                        <th>Rank</th>
-                        <th>Team</th>
-                        <th>Score</th>
-                    </tr>
-                </thead>
-                <tbody id="leaderboardBody">
-                    <!-- Leaderboard data will be inserted here -->
-                </tbody>
-            </table>
+        <div class="flex flex-col md:flex-row gap-8">
+            <div class="w-full md:w-1/2">
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <h2 class="text-xl font-semibold mb-4">Submit Your Solution</h2>
+                    
+                    <div class="mb-6 text-center">
+                        <div class="bg-indigo-50 rounded-lg p-4">
+                            <div class="text-2xl font-bold text-indigo-700">
+                                <span id="phaseType">Coding Phase</span>: <span id="timeLeft">5:00</span>
+                            </div>
+                            <div id="swapMessage" class="hidden mt-2 text-red-500 font-medium">
+                                Time to swap! Next member's turn in <span id="swapTimer">30</span> seconds
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <form id="codeForm" class="space-y-4">
+                        <div>
+                            <label for="team" class="block text-sm font-medium text-gray-700 mb-1">Team Name:</label>
+                            <input type="text" id="team" name="team" required class="w-full rounded-md border border-gray-300 p-2 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        </div>
+                        
+                        <div>
+                            <label for="problem" class="block text-sm font-medium text-gray-700 mb-1">Problem:</label>
+                            <select id="problem" name="problem" required class="w-full rounded-md border border-gray-300 p-2 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                <option value="problem1">Problem 1</option>
+                                <option value="problem2">Problem 2</option>
+                                <option value="problem3">Problem 3</option>
+                            </select>
+                        </div>
+                        
+                        <div>
+                            <label for="language" class="block text-sm font-medium text-gray-700 mb-1">Language:</label>
+                            <select id="language" name="language" required class="w-full rounded-md border border-gray-300 p-2 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                <option value="py">Python</option>
+                                <option value="java">Java</option>
+                                <option value="cpp">C++</option>
+                                <option value="c">C</option>
+                                <option value="js">JavaScript</option>
+                            </select>
+                        </div>
+                        
+                        <div>
+                            <label for="code" class="block text-sm font-medium text-gray-700 mb-1">Your Code:</label>
+                            <textarea id="code" name="code" required class="w-full h-64 rounded-md border border-gray-300 p-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"></textarea>
+                        </div>
+                        
+                        <div class="mt-6">
+                            <button type="submit" class="w-full bg-indigo-500 hover:bg-indigo-600 text-white font-medium py-2 px-4 rounded-md shadow">
+                                Submit
+                            </button>
+                        </div>
+                    </form>
+                    
+                    <div id="exampleIO" class="mt-6"></div>
+                    
+                    <div id="submissionStatus" class="hidden mt-6">
+                        <div class="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                            <h3 class="font-medium mb-2">Submission Status</h3>
+                            <div class="bg-gray-200 h-4 rounded-full overflow-hidden">
+                                <div id="progressFill" class="bg-indigo-500 h-full w-0 transition-all duration-500"></div>
+                            </div>
+                            <div id="statusText" class="mt-2 text-sm">Initializing submission...</div>
+                            <div id="testResults" class="mt-4"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="w-full md:w-1/2">
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <h2 class="text-xl font-semibold mb-4">Leaderboard</h2>
+                    <table class="w-full">
+                        <thead>
+                            <tr class="bg-gray-100">
+                                <th class="text-left p-2 rounded-tl-md">Rank</th>
+                                <th class="text-left p-2">Team</th>
+                                <th class="text-left p-2 rounded-tr-md">Score</th>
+                            </tr>
+                        </thead>
+                        <tbody id="leaderboardBody">
+                            <!-- Leaderboard data will be inserted here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -155,23 +114,32 @@
                 if (data.team) {
                     const teamInput = document.getElementById('team');
                     teamInput.value = data.team;
-                    teamInput.readOnly = true; // Make it read-only
+                    teamInput.readOnly = true;
                     
-                    // Add a visual indicator
-                    teamInput.style.backgroundColor = '#f0f0f0';
+                    // Get team details and set initial timer
+                    const teamResponse = await fetch(`/team/${data.team}`);
+                    const teamData = await teamResponse.json();
+                    
+                    // Check localStorage for saved timer state
+                    const savedState = JSON.parse(localStorage.getItem('timerState') || '{}');
+                    if (savedState.teamName === data.team && savedState.timeLeft > 0) {
+                        codingTimeLeft = savedState.timeLeft;
+                        isSwapPhase = savedState.isSwapPhase;
+                        swapTimeLeft = savedState.swapTimeLeft;
+                    } else {
+                        // Set initial coding time based on team size
+                        codingTimeLeft = Math.floor(1200/teamData.members.length);
+                    }
+                    
+                    // Add visual indicator for assigned team
+                    teamInput.classList.add('bg-gray-100');
                     
                     // Add a team banner at the top
                     const banner = document.createElement('div');
-                    banner.style.backgroundColor = '#4CAF50';
-                    banner.style.color = 'white';
-                    banner.style.padding = '10px';
-                    banner.style.marginBottom = '20px';
-                    banner.style.borderRadius = '5px';
-                    banner.style.textAlign = 'center';
-                    banner.style.fontWeight = 'bold';
+                    banner.className = 'bg-green-500 text-white p-3 mb-4 rounded-md text-center font-bold';
                     banner.innerHTML = `Assigned to: ${data.team}`;
                     
-                    document.body.insertBefore(banner, document.body.firstChild);
+                    document.querySelector('header').appendChild(banner);
                 }
             } catch (error) {
                 console.error('Error loading team configuration:', error);
@@ -180,7 +148,6 @@
         
         const codeForm = document.getElementById('codeForm');
         let submissionInProgress = false;
-        let codingTimeLeft = 300; // 5 minutes in seconds
         let swapTimeLeft = 30; // 30 seconds for swapping
         let isSwapPhase = false;
 
@@ -189,11 +156,23 @@
                 swapTimeLeft--;
                 document.getElementById('swapTimer').textContent = swapTimeLeft;
                 
+                // Save state to localStorage
+                localStorage.setItem('timerState', JSON.stringify({
+                    teamName: document.getElementById('team').value,
+                    timeLeft: codingTimeLeft,
+                    isSwapPhase,
+                    swapTimeLeft
+                }));
+                
                 if (swapTimeLeft <= 0) {
                     isSwapPhase = false;
                     swapTimeLeft = 30;
-                    codingTimeLeft = 300;
-                    document.getElementById('swapMessage').style.display = 'none';
+                    // Get team size and set appropriate time
+                    const teamName = document.getElementById('team').value;
+                    const teamResponse = await fetch(`/team/${teamName}`);
+                    const teamData = await teamResponse.json();
+                    codingTimeLeft = Math.floor(1200/teamData.members.length);
+                    document.getElementById('swapMessage').classList.add('hidden');
                     enableForm(true);
                     
                     // Update team member
@@ -201,7 +180,7 @@
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
-                            teamName: document.getElementById('team').value,
+                            teamName: teamName,
                             phase: 'coding'
                         })
                     });
@@ -213,9 +192,17 @@
                 document.getElementById('timeLeft').textContent = 
                     `${minutes}:${seconds.toString().padStart(2, '0')}`;
                 
+                // Save state to localStorage
+                localStorage.setItem('timerState', JSON.stringify({
+                    teamName: document.getElementById('team').value,
+                    timeLeft: codingTimeLeft,
+                    isSwapPhase,
+                    swapTimeLeft
+                }));
+                
                 if (codingTimeLeft <= 0) {
                     isSwapPhase = true;
-                    document.getElementById('swapMessage').style.display = 'block';
+                    document.getElementById('swapMessage').classList.remove('hidden');
                     enableForm(false);
                 }
             }
@@ -286,7 +273,7 @@
             const statusText = document.getElementById('statusText');
             const testResults = document.getElementById('testResults');
             
-            statusDiv.style.display = 'block';
+            statusDiv.classList.remove('hidden');
             
             const pollInterval = setInterval(async () => {
                 try {
@@ -307,42 +294,42 @@
                             const passRate = (status.result.passedTests / status.result.totalTests) * 100;
                             statusText.innerHTML = `<strong>Submission completed!</strong>`;
                             testResults.innerHTML = `
-                                <div style="margin-top: 10px;">
-                                    <div>Passed: ${status.result.passedTests}/${status.result.totalTests} tests (${passRate}%)</div>
+                                <div class="mt-4">
+                                    <div class="font-medium">Passed: ${status.result.passedTests}/${status.result.totalTests} tests (${passRate}%)</div>
                                     ${status.result.results ? `
-                                        <div style="margin-top: 10px;">
+                                        <div class="mt-4">
                                             <strong>Test Case Details:</strong>
-                                            <div class="test-cases">
+                                            <div class="space-y-4 mt-2">
                                                 ${status.result.results.map((test, i) => `
-                                                    <div class="test-case" style="margin-top: 10px; border: 1px solid #ddd; border-radius: 4px;">
-                                                        <div class="test-header" style="padding: 10px; background: ${test.passed ? '#e8f5e9' : '#ffebee'}; cursor: pointer; display: flex; justify-content: space-between;" 
+                                                    <div class="border rounded-md overflow-hidden">
+                                                        <div class="p-3 ${test.passed ? 'bg-green-50' : 'bg-red-50'} flex justify-between cursor-pointer"
                                                              onclick="toggleTestDetails(${i})">
                                                             <span>Test ${i + 1}: ${test.passed ? '✅ Passed' : '❌ Failed'}</span>
                                                             <span>▼</span>
                                                         </div>
-                                                        <div id="test-details-${i}" class="test-body" style="display: none; padding: 10px;">
-                                                            <div style="margin-bottom: 10px;">
-                                                                <strong>Input:</strong>
-                                                                <pre style="background: #f8f8f8; padding: 8px; overflow-x: auto;">${test.input || 'N/A'}</pre>
+                                                        <div id="test-details-${i}" class="hidden p-3 border-t">
+                                                            <div class="mb-3">
+                                                                <strong class="block text-sm text-gray-600 mb-1">Input:</strong>
+                                                                <pre class="bg-gray-100 p-2 rounded text-sm overflow-x-auto">${test.input || 'N/A'}</pre>
                                                             </div>
-                                                            <div style="margin-bottom: 10px;">
-                                                                <strong>Expected Output:</strong>
-                                                                <pre style="background: #f8f8f8; padding: 8px; overflow-x: auto;">${test.expectedOutput || 'N/A'}</pre>
+                                                            <div class="mb-3">
+                                                                <strong class="block text-sm text-gray-600 mb-1">Expected Output:</strong>
+                                                                <pre class="bg-gray-100 p-2 rounded text-sm overflow-x-auto">${test.expectedOutput || 'N/A'}</pre>
                                                             </div>
                                                             <div>
-                                                                <strong>Your Output:</strong>
-                                                                <pre style="background: #f8f8f8; padding: 8px; overflow-x: auto;">${test.actualOutput || 'N/A'}</pre>
+                                                                <strong class="block text-sm text-gray-600 mb-1">Your Output:</strong>
+                                                                <pre class="bg-gray-100 p-2 rounded text-sm overflow-x-auto">${test.actualOutput || 'N/A'}</pre>
                                                             </div>
                                                             ${test.diff ? `
-                                                                <div style="margin-top: 10px; color: #d32f2f;">
-                                                                    <strong>Difference Highlighted:</strong>
-                                                                    <pre style="background: #fff8f8; padding: 8px; overflow-x: auto;">${test.diff.mismatch || ''}</pre>
+                                                                <div class="mt-3">
+                                                                    <strong class="block text-sm text-red-600 mb-1">Difference Highlighted:</strong>
+                                                                    <pre class="bg-red-50 p-2 rounded text-sm overflow-x-auto">${test.diff.mismatch || ''}</pre>
                                                                 </div>
                                                             ` : ''}
                                                             ${test.error ? `
-                                                                <div style="margin-top: 10px; color: #d32f2f;">
-                                                                    <strong>Error:</strong>
-                                                                    <pre style="background: #fff8f8; padding: 8px; overflow-x: auto;">${test.friendlyError || test.error}</pre>
+                                                                <div class="mt-3">
+                                                                    <strong class="block text-sm text-red-600 mb-1">Error:</strong>
+                                                                    <pre class="bg-red-50 p-2 rounded text-sm overflow-x-auto">${test.friendlyError || test.error}</pre>
                                                                 </div>
                                                             ` : ''}
                                                         </div>
@@ -356,7 +343,7 @@
                             // Stop polling after successful completion
                             return;
                         } else {
-                            statusText.innerHTML = `<strong style="color: red;">Submission failed: ${status.error || 'Unknown error'}</strong>`;
+                            statusText.innerHTML = `<strong class="text-red-500">Submission failed: ${status.error || 'Unknown error'}</strong>`;
                             // Stop polling after failure
                             return;
                         }
@@ -364,7 +351,7 @@
                         clearInterval(pollInterval);
                         submissionInProgress = false;
                         Array.from(codeForm.elements).forEach(el => el.disabled = false);
-                        statusText.innerHTML = `<strong style="color: red;">Submission timed out after ${maxRetries + 1} attempts.</strong>`;
+                        statusText.innerHTML = `<strong class="text-red-500">Submission timed out after ${maxRetries + 1} attempts.</strong>`;
                         return;
                     } else {
                         statusText.textContent = `Processing submission... (${Math.round((maxAttempts - attempts) / 2)}s remaining)`;
@@ -387,10 +374,11 @@
                 
                 leaderboard.forEach((entry, index) => {
                     const row = document.createElement('tr');
+                    row.className = index % 2 === 0 ? '' : 'bg-gray-50';
                     row.innerHTML = `
-                        <td>${index + 1}</td>
-                        <td>${entry.team}</td>
-                        <td>${entry.score}</td>
+                        <td class="p-2">${index + 1}</td>
+                        <td class="p-2 font-medium">${entry.team}</td>
+                        <td class="p-2">${entry.score}</td>
                     `;
                     tbody.appendChild(row);
                 });
@@ -413,27 +401,33 @@
             const exampleDiv = document.getElementById('exampleIO');
             
             const examples = {
-                problem1: `<pre style="background: #f5f5f5; padding: 15px; border-radius: 4px;">
-Input:
+                problem1: `<div class="bg-gray-50 p-4 rounded-md mt-4">
+                    <h3 class="font-medium text-gray-700 mb-2">Example Input/Output:</h3>
+                    <pre class="bg-white p-3 rounded border border-gray-200 text-sm">Input:
 5
 4 5 9 10 2
 1 3
 
 Output:
-24</pre>`,
-                problem2: `<pre style="background: #f5f5f5; padding: 15px; border-radius: 4px;">
-Input:
+24</pre>
+                </div>`,
+                problem2: `<div class="bg-gray-50 p-4 rounded-md mt-4">
+                    <h3 class="font-medium text-gray-700 mb-2">Example Input/Output:</h3>
+                    <pre class="bg-white p-3 rounded border border-gray-200 text-sm">Input:
 6
 10 20 4 45 99 99
 
 Output:
-45</pre>`,
-                problem3: `<pre style="background: #f5f5f5; padding: 15px; border-radius: 4px;">
-Input:
+45</pre>
+                </div>`,
+                problem3: `<div class="bg-gray-50 p-4 rounded-md mt-4">
+                    <h3 class="font-medium text-gray-700 mb-2">Example Input/Output:</h3>
+                    <pre class="bg-white p-3 rounded border border-gray-200 text-sm">Input:
 racecar
 
 Output:
-Yes</pre>`
+Yes</pre>
+                </div>`
             };
             
             exampleDiv.innerHTML = examples[problem] || '';
@@ -441,43 +435,30 @@ Yes</pre>`
         
         // Initialize examples for the default problem
         updateExamples();
-        
-        // Add this to your existing JavaScript
-        document.getElementById('loadTemplate').addEventListener('click', async () => {
-            const language = document.getElementById('language').value;
-            const problem = document.getElementById('problem').value;
-            const templateStatus = document.getElementById('templateStatus');
-            
-            templateStatus.textContent = 'Loading template...';
-            
-            try {
-                const response = await fetch(`/template/${language}/${problem}`);
-                if (response.ok) {
-                    const template = await response.text();
-                    document.getElementById('code').value = template;
-                    templateStatus.textContent = 'Template loaded!';
-                    setTimeout(() => { templateStatus.textContent = ''; }, 3000);
-                } else {
-                    templateStatus.textContent = 'Template not available for this language/problem';
-                }
-            } catch (error) {
-                templateStatus.textContent = 'Error loading template';
-            }
-        });
 
         function toggleTestDetails(index) {
             const details = document.getElementById(`test-details-${index}`);
             const header = details.previousElementSibling;
             const arrow = header.querySelector('span:last-child');
             
-            if (details.style.display === 'none') {
-                details.style.display = 'block';
+            if (details.classList.contains('hidden')) {
+                details.classList.remove('hidden');
                 arrow.textContent = '▲';
             } else {
-                details.style.display = 'none';
+                details.classList.add('hidden');
                 arrow.textContent = '▼';
             }
         }
+
+        // Add window unload handler to save state
+        window.addEventListener('beforeunload', () => {
+            localStorage.setItem('timerState', JSON.stringify({
+                teamName: document.getElementById('team').value,
+                timeLeft: codingTimeLeft,
+                isSwapPhase,
+                swapTimeLeft
+            }));
+        });
     </script>
 </body>
 </html>

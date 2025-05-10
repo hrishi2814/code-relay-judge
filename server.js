@@ -22,7 +22,10 @@ try {
 }
 
 // Initialize team config on server start
-teamConfig.initializeTeamConfig().catch(console.error);
+teamConfig.initializeTeamConfig().catch(error => {
+  console.error('Failed to initialize team config:', error);
+  process.exit(1);
+});
 
 // Add a Map to track submissions in progress
 const activeSubmissions = new Map();
@@ -328,9 +331,19 @@ app.get('/admin-status', async (req, res) => {
 app.post('/team/add', async (req, res) => {
   try {
     const { teamName, members } = req.body;
-    const team = await teamConfig.addTeam(teamName, members);
+    
+    // Validate input
+    if (!teamName || !members) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+
+    // Filter out any empty or undefined members
+    const validMembers = members.filter(member => member && member.trim());
+    
+    const team = await teamConfig.addTeam(teamName, validMembers);
     res.json(team);
   } catch (error) {
+    console.error('Team registration error:', error);
     res.status(400).json({ error: error.message });
   }
 });
@@ -369,6 +382,17 @@ app.post('/team/activate', express.json(), async (req, res) => {
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
+});
+
+app.post('/create-team', (req, res) => {
+    const { teamSize, teamName } = req.body;
+    
+    // Validate team size
+    if (![2, 3, 4].includes(Number(teamSize))) {
+        return res.status(400).json({ error: 'Invalid team size. Must be 2, 3, or 4 players.' });
+    }
+    
+    // ... rest of the existing code ...
 });
 
 app.listen(6969,'0.0.0.0', () => console.log("Server running on 6969"));

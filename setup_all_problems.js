@@ -128,5 +128,87 @@ rl.on('line', (line) => {
     lineCount++;
 });`
     }
+  },
+  {
+    title: "Maximum Odd Sum",
+    description: "Given an array of N integers, find the maximum possible odd sum by selecting some elements. If no odd sum is possible, output -1.",
+    input: "First line contains N (number of integers)\nSecond line contains N space-separated integers",
+    output: "A single integer representing the maximum possible odd sum, or -1 if impossible",
+    examples: [
+      {
+        input: "5\n1 2 3 4 5",
+        output: "15"
+      }
+    ],
+    testCases: [
+      // Basic case with all positive numbers
+      {
+        input: "5\n1 2 3 4 5",
+        output: "15"
+      },
+      // Case with negative numbers
+      {
+        input: "6\n-3 -2 1 4 -5 6",
+        output: "7"
+      },
+      // Case where only selecting some elements gives max odd sum
+      {
+        input: "4\n2 4 6 1",
+        output: "13"
+      },
+      // Case where no odd sum is possible
+      {
+        input: "3\n2 4 6",
+        output: "-1"
+      },
+      // Case with large numbers and mix of positive/negative
+      {
+        input: "5\n1000 -999 2000 -1999 3000",
+        output: "4001"
+      }
+    ]
+  },
+  {
+    title: "Longest Distinct Subarray",
+    description: "Find the length of the longest subarray where all elements are distinct (no duplicates).",
+    input: "First line contains n (length of array)\nSecond line contains n space-separated integers",
+    output: "A single integer — the length of the longest subarray with distinct elements",
+    examples: [
+      {
+        input: "6\n1 2 3 1 2 3",
+        output: "3"
+      },
+      {
+        input: "10\n1 5 3 5 2 3 4 1 5 6",
+        output: "5"
+      }
+    ],
+    testCases: [
+      // Example cases
+      {
+        input: "6\n1 2 3 1 2 3",
+        output: "3"
+      },
+      // Longer sequence
+      {
+        input: "10\n1 5 3 5 2 3 4 1 5 6",
+        output: "5"
+      },
+      // All same numbers
+      {
+        input: "8\n1 1 1 1 1 1 1 1",
+        output: "1"
+      },
+      // Already distinct
+      {
+        input: "5\n1 2 3 4 5",
+        output: "5"
+      },
+      // Complex case with multiple possible subarrays
+      {
+        input: "15\n1 2 3 4 1 2 5 6 7 8 1 2 3 4 5",
+        output: "8"
+      }
+    ]
   }
 ];

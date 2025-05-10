@@ -6,8 +6,9 @@ const execPromise = util.promisify(exec);
 
 module.exports = async function runCodeInDocker(team, problem, language, filePath) {
     try {
-        // Create a unique container name
-        const containerName = `judge-${team}-${problem}-${Date.now()}`;
+        // Create a unique container name (remove spaces and special characters)
+        const sanitizedTeam = team.replace(/[^a-zA-Z0-9]/g, '');
+        const containerName = `judge-${sanitizedTeam}-${problem}-${Date.now()}`;
         
         // Get test cases for the problem
         const testCasesDir = path.join(__dirname, 'problems', problem, 'testcases');
@@ -17,108 +18,103 @@ module.exports = async function runCodeInDocker(team, problem, language, filePat
         let passedTests = 0;
         const totalTests = inputFiles.length;
         const results = [];
-        
+
+        // Language-specific Docker image and command
+        const dockerConfig = {
+            py: {
+                image: 'python:3.9-slim',
+                cmd: file => `python ${file}`
+            },
+            java: {
+                image: 'openjdk:11-jdk-slim',
+                cmd: file => `javac ${file} && java Main`
+            },
+            cpp: {
+                image: 'gcc:latest',
+                cmd: file => `g++ -std=c++17 ${file} -o program && ./program`
+            },
+            js: {
+                image: 'node:14-alpine',
+                cmd: file => `node ${file}`
+            },
+            javascript: {
+                image: 'node:14-alpine',
+                cmd: file => `node ${file}`
+            }
+        };
+
+        const config = dockerConfig[language];
+        if (!config) {
+            throw new Error('Unsupported language');
+        }
+
         // Run each test case
         for (const inputFile of inputFiles) {
-            const testName = inputFile.replace('.in', '');
-            const outputFile = `${testName}.out`;
-            
-            const inputPath = path.join(testCasesDir, inputFile);
-            const expectedOutputPath = path.join(testCasesDir, outputFile);
-            
-            // Read expected output
-            const expectedOutput = (await fs.readFile(expectedOutputPath, 'utf-8')).trim();
-            
+            const testNumber = inputFile.split('.')[0];
+            const outputFile = path.join(testCasesDir, `${testNumber}.out`);
+            const expectedOutput = await fs.readFile(outputFile, 'utf8');
+
+            // Construct Docker command
+            const dockerCmd = `docker run --name ${containerName} --rm` +
+                ` -v "${filePath}:/code/solution${language === 'java' ? '.java' : '.' + language}"` +
+                ` -v "${path.join(testCasesDir, inputFile)}:/code/input.txt"` +
+                ` ${config.image}` +
+                ` sh -c "cd /code && (cat input.txt | tr -d '\\r' > input_unix.txt) && ${config.cmd(`solution${language === 'java' ? '.java' : '.' + language}`)} < input_unix.txt"`;
+
             try {
-                // Run code in Docker with appropriate command based on language
-                const dockerCommand = getDockerCommand(language, filePath, inputPath, containerName);
-                
-                const { stdout, stderr } = await execPromise(dockerCommand, { timeout: 10000 });
+                const { stdout } = await execPromise(dockerCmd);
                 const actualOutput = stdout.trim();
-                
-                const passed = actualOutput === expectedOutput;
+
+                const passed = actualOutput === expectedOutput.trim();
                 if (passed) passedTests++;
-                
+
                 results.push({
-                    testName,
+                    test: testNumber,
                     passed,
-                    input: await fs.readFile(inputPath, 'utf-8'),
-                    expectedOutput,
-                    actualOutput,
-                    error: stderr,
-                    friendlyError: parseErrorMessage(stderr, language),
-                    diff: passed ? null : {
-                        expected: expectedOutput,
-                        actual: actualOutput,
-                        mismatch: highlightDifference(expectedOutput, actualOutput)
-                    }
+                    input: await fs.readFile(path.join(testCasesDir, inputFile), 'utf8'),
+                    expectedOutput: expectedOutput.trim(),
+                    actualOutput
                 });
+
             } catch (error) {
-                // Handle test case execution error
                 results.push({
-                    testName,
+                    test: testNumber,
                     passed: false,
-                    input: await fs.readFile(inputPath, 'utf-8'),
-                    expectedOutput,
-                    actualOutput: "",
-                    error: error.message,
-                    friendlyError: parseErrorMessage(error.message, language),
+                    input: await fs.readFile(path.join(testCasesDir, inputFile), 'utf8'),
+                    expectedOutput: expectedOutput.trim(),
+                    actualOutput: error.message,
+                    error: error.message
                 });
             }
         }
-        
-        // Calculate score (e.g., percentage of tests passed)
-        const score = Math.round((passedTests / totalTests) * 100);
-        
+
         return {
-            status: "completed",
-            score,
             passedTests,
             totalTests,
-            results,
-            compilationError: false
+            score: Math.floor((passedTests / totalTests) * 100),
+            results
         };
+
     } catch (error) {
-        console.error(`Error running code: ${error.message}`);
-        
-        // Check if this is likely a compilation error
-        const isCompilationError = error.message.includes('exited with code') || 
-                                  error.message.includes('syntax error') ||
-                                  error.message.includes('cannot find symbol');
-        
-        return {
-            status: "error",
-            error: error.message,
-            friendlyError: parseErrorMessage(error.message, language),
-            score: 0,
-            passedTests: 0,
-            totalTests: 0,
-            results: [],
-            compilationError: isCompilationError
-        };
+        console.error('Error running code:', error);
+        throw error;
     }
-};
+}
 
 function getDockerCommand(language, filePath, inputPath, containerName) {
-    // Get clean filenames without escaping
     const fileName = path.basename(filePath);
-    
-    // Use proper Docker volume mounting (no need to escape spaces in quotes)
     const baseCommand = `docker run --name ${containerName} --rm`;
     const volumes = `-v "${filePath}:/code/${fileName}" -v "${inputPath}:/code/input.txt"`;
     
     switch(language.toLowerCase()) {
         case 'python':
         case 'py':
-            // Use cat to pipe the input instead of shell redirection
             return `${baseCommand} ${volumes} python:3.9-slim sh -c "cat /code/input.txt | python /code/${fileName}"`;
         case 'java':
             return `${baseCommand} ${volumes} openjdk:11 sh -c "cat /code/input.txt | (cp /code/${fileName} /code/Main.java && javac /code/Main.java && java -cp /code Main)"`;
         case 'cpp':
         case 'c++':
             return `${baseCommand} ${volumes} gcc:latest sh -c "cat /code/input.txt | (g++ /code/${fileName} -o /code/a.out && /code/a.out)"`;
-        case 'c':
-            return `${baseCommand} ${volumes} gcc:latest sh -c "cat /code/input.txt | (gcc /code/${fileName} -o /code/a.out && /code/a.out)"`;
         case 'javascript':
         case 'js':
             return `${baseCommand} ${volumes} node:14-alpine sh -c "cat /code/input.txt | node /code/${fileName}"`;

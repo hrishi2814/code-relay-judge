@@ -56,9 +56,13 @@ class SubmissionQueue {
       job.result = result;
       this.results[job.id] = job;
       
-      if (result.score === 100) {
-        // Only update leaderboard for 100% solutions
-        await this.updateLeaderboard(job.team, job.problem, result.score);
+      // Calculate partial score
+      if (result.passedTests > 0) {
+        // Each test case is worth 20 points
+        const partialScore = Math.min(100, result.passedTests * 20);
+        
+        // Update leaderboard with partial score
+        await this.updateLeaderboard(job.team, job.problem, partialScore);
       }
     } catch (error) {
       job.status = 'failed';
@@ -81,24 +85,24 @@ class SubmissionQueue {
     let teamEntry = leaderboard.find(entry => entry.team === team);
     
     if (!teamEntry) {
-      teamEntry = { team, score: 0, solvedProblems: {} };
+      teamEntry = { team, score: 0, problemScores: {} };
       leaderboard.push(teamEntry);
     }
 
-    // Check if this problem was already solved with 100% score
-    if (!teamEntry.solvedProblems[problem] || teamEntry.solvedProblems[problem] < 100) {
-      // If new score is better, update it
-      if (!teamEntry.solvedProblems[problem] || score > teamEntry.solvedProblems[problem]) {
-        // If there was a previous score, subtract it before adding new score
-        if (teamEntry.solvedProblems[problem]) {
-          teamEntry.score -= teamEntry.solvedProblems[problem];
-        }
-        teamEntry.score += score;
-        teamEntry.solvedProblems[problem] = score;
-      }
+    // Get the current best score for this problem
+    const currentBestScore = teamEntry.problemScores?.[problem] || 0;
+    
+    // Only update if new score is higher
+    if (score > currentBestScore) {
+      // Update the score for this specific problem
+      teamEntry.problemScores[problem] = score;
+      
+      // Recalculate total score as sum of best problem scores
+      teamEntry.score = Object.values(teamEntry.problemScores).reduce((a, b) => a + b, 0);
+      teamEntry.lastUpdated = Date.now();
     }
     
-    // Sort by score (descending)
+    // Sort by total score
     leaderboard.sort((a, b) => b.score - a.score);
     
     await fs.writeJson(leaderboardPath, leaderboard, { spaces: 2 });

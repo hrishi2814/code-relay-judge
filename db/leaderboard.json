@@ -1,1 +1,11 @@
-[]
+[
+  {
+    "team": "Key",
+    "score": 120,
+    "problemScores": {
+      "problem2": 20,
+      "problem1": 100
+    },
+    "lastUpdated": 1744351588667
+  }
+]
