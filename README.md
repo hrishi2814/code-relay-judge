@@ -169,7 +169,7 @@ Teams can be configured with multiple members for rotation during relay phases.
 
 ### Submission Results
 Results show detailed feedback on test cases passed and any errors encountered.
-![Submission Result](screenshots/submission_result.png)
+![Submission Result](screenshots/submission_results.png)
 
 ## 🛠️ Requirements
 
